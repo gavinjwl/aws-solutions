@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "lowcode-transactional-datalake"
+version = "0.1.0"
+description = ""
+authors = ["Gavin Lin <gavinjwl@amazon.com>"]
+license = "Apache License"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+boto3 = "^1.24.42"
+aws-cdk-lib = "^2.34.2"
+
+[tool.poetry.dev-dependencies]
+autopep8 = "^1.6.0"
+pytest = "^7.1.2"
+pylint = "^2.13.7"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
