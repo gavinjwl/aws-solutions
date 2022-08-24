@@ -6,7 +6,7 @@ authors = ["Gavin Lin <gavinjwl@amazon.com>"]
 license = "Apache License"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 boto3 = "^1.24.42"
 aws-cdk-lib = "^2.34.2"
 

@@ -1,6 +1,6 @@
 import os
 
-from aws_cdk import (App, CfnOutput, CfnParameter, Duration, Stack, aws_glue,
+from aws_cdk import (App, Aws, CfnOutput, CfnParameter, Duration, Stack, aws_glue,
                      aws_iam, aws_lambda, aws_lambda_event_sources, aws_logs,
                      aws_s3)
 from aws_cdk import aws_s3_deployment as s3deploy
@@ -76,6 +76,7 @@ class SampleStack(Stack):
         # glue data catalog
         aws_glue.CfnDatabase(
             self, 'database',
+            catalog_id=Aws.ACCOUNT_ID,
             database_input=aws_glue.CfnDatabase.DatabaseInputProperty(
                 name=database_name,
                 location_uri=f's3://{bucket.bucket_name}/{database_name}/',
@@ -83,6 +84,7 @@ class SampleStack(Stack):
         )
         aws_glue.CfnTable(
             self, 'table',
+            catalog_id=Aws.ACCOUNT_ID,
             database_name=database_name,
             table_input=aws_glue.CfnTable.TableInputProperty(
                 name=table_name,
