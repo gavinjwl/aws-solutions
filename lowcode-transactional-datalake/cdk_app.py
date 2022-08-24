@@ -14,29 +14,32 @@ class SampleStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
 
+        # default parameters could be customized
         database_name = 'lowcode_transactional_database'
         table_name = 'lowcode_transactional_table'
 
+        # default code base path
         codebase_path = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             'lowcode_transactional_datalake'
         )
 
+        # bucket for source code, data ingestion, temp data, glue database/table
         bucket = aws_s3.Bucket(
             self, 'bucket',
         )
-        queue = aws_sqs.Queue(self, id='queue')
 
+        # S3 object notification
+        queue = aws_sqs.Queue(self, id='queue')
         bucket.add_event_notification(
             aws_s3.EventType.OBJECT_CREATED,
             aws_s3_notifications.SqsDestination(queue),
             aws_s3.NotificationKeyFilter(prefix='raw/'),
         )
-
         trigger_function = aws_lambda.Function(
-            self, 'trigger-function',
+            self, 'trigger_stepfunctions-function',
             code=aws_lambda.Code.from_asset(
-                os.path.join(codebase_path, 'trigger_lambda')
+                os.path.join(codebase_path, 'lambda_trigger_stepfunctions')
             ),
             handler='lambda_function.lambda_handler',
             runtime=aws_lambda.Runtime.PYTHON_3_8,
@@ -50,10 +53,11 @@ class SampleStack(Stack):
             ],
         )
 
+        # stepfunctions - step 1
         clean_s3_function = aws_lambda.Function(
             self, 'clean_s3-function',
             code=aws_lambda.Code.from_asset(
-                os.path.join(codebase_path, 'clean_s3_lambda')
+                os.path.join(codebase_path, 'lambda_clean_s3')
             ),
             handler='lambda_function.lambda_handler',
             runtime=aws_lambda.Runtime.PYTHON_3_8,
@@ -69,6 +73,7 @@ class SampleStack(Stack):
         bucket.grant_read(clean_s3_function)
         bucket.grant_delete(clean_s3_function)
 
+        # glue data catalog
         aws_glue.CfnDatabase(
             self, 'database',
             database_input=aws_glue.CfnDatabase.DatabaseInputProperty(
@@ -84,6 +89,7 @@ class SampleStack(Stack):
             )
         )
 
+        # IAM role for Glue job
         glue_role = aws_iam.Role(
             self, 'glue_role',
             assumed_by=aws_iam.ServicePrincipal('glue.amazonaws.com'),
@@ -95,10 +101,11 @@ class SampleStack(Stack):
         bucket.grant_read_write(glue_role)
         bucket.grant_delete(glue_role)
 
+        # Stepfunctions - step 2
         s3deploy.BucketDeployment(
             self, "csv_to_parquet-code",
             sources=[s3deploy.Source.asset(
-                os.path.join(codebase_path, 'csv_to_parquet')
+                os.path.join(codebase_path, 'glue_csv_to_parquet')
             )],
             destination_bucket=bucket,
             destination_key_prefix="scripts"
@@ -143,11 +150,12 @@ class SampleStack(Stack):
             worker_type='G.1X'
         )
 
+        # Stepfunctions - step 3
         s3deploy.BucketDeployment(
             self, "parquet_to_hudi_glue-code",
             sources=[s3deploy.Source.asset(
                 os.path.join(
-                    codebase_path, 'parquet_to_hudi_glue')
+                    codebase_path, 'glue_parquet_to_hudi')
             )],
             destination_bucket=bucket,
             destination_key_prefix="scripts"
@@ -195,6 +203,7 @@ class SampleStack(Stack):
             worker_type='G.1X'
         )
 
+        # Construct Stepfunctions
         clean_s3_task = sfn_tasks.LambdaInvoke(
             self, 'clean_s3-task',
             lambda_function=clean_s3_function,

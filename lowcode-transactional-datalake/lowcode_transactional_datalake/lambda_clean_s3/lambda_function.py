@@ -33,6 +33,8 @@ def list_all(client):
         Prefix=PREFIX,
         # ContinuationToken='string',
     )
+    if response['KeyCount'] == 0:
+        return list()
     objects = [
         {'Key': content['Key']}
         for content in response['Contents']
